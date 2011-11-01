@@ -160,6 +160,14 @@ class YamlFixture extends Object {
 				$this->writeSQL($dataClass, $items);
 			}
 		}
+
+		// Dictionary is now fully built, inject the relations.
+		foreach($fixtureContent as $dataClass => $items) {
+			if(ClassInfo::exists($dataClass)) {
+				$this->writeRelations($dataClass, $items);
+			}
+		}
+
 		
 		DataObject::set_validation_enabled($validationenabled);
 	}
@@ -196,6 +204,17 @@ class YamlFixture extends Object {
 			
 			// has to happen before relations in case a class is referring to itself
 			$this->fixtureDictionary[$dataClass][$identifier] = $obj->ID;
+		}
+	}
+
+	/**
+	 * Writes the relations separately into the DataObjects - separated out so
+	 * the writeDataObject has a chance to build the dictionary first.
+	 */
+	protected function writeRelations($dataClass, $items) {
+		foreach($items as $identifier => $fields) {
+			$obj = $this->objFromFixture($dataClass, $identifier);
+			if (!$obj) continue;
 			
 			// Populate all relations
 			if($fields) foreach($fields as $fieldName => $fieldVal) {
@@ -205,7 +224,6 @@ class YamlFixture extends Object {
 					foreach($items as $item) {
 						$parsedItems[] = $this->parseFixtureVal($item);
 					}
-					$obj->write();
 					if($obj->has_many($fieldName)) {
 						$obj->getComponents($fieldName)->setByIDList($parsedItems);
 					} elseif($obj->many_many($fieldName)) {
@@ -213,9 +231,9 @@ class YamlFixture extends Object {
 					}
 				} elseif($obj->has_one($fieldName)) {
 					$obj->{$fieldName . 'ID'} = $this->parseFixtureVal($fieldVal);
+					$obj->write();
 				}
 			}
-			$obj->write();
 		}
 	}
 	
