@@ -197,7 +197,7 @@ class HtmlEditorField_Readonly extends ReadonlyField {
  */
 class HtmlEditorField_Toolbar extends RequestHandler {
 	protected $controller, $name;
-	
+
 	function __construct($controller, $name) {
 		parent::__construct();
 		Requirements::javascript(SAPPHIRE_DIR . "/thirdparty/behaviour/behaviour.js");
@@ -218,44 +218,47 @@ class HtmlEditorField_Toolbar extends RequestHandler {
 	function siteTreeSearchCallback($sourceObject, $labelField, $search) {
 		return DataObject::get($sourceObject, "\"MenuTitle\" LIKE '%$search%' OR \"Title\" LIKE '%$search%'");
 	}
-	
+
 	/**
-	 * Return a {@link Form} instance allowing a user to
-	 * add links in the TinyMCE content editor.
+	 * Return a {@link Form} instance allowing a user to add links in the TinyMCE content editor.
+	 * To configure the options, see {@link HtmlEditorConfig::addLinkOption} and {@link HtmlEditorConfig::addLinkScript}.
 	 *  
 	 * @return Form
-	 */
+	 */	
 	function LinkForm() {
-		$siteTree = new TreeDropdownField('internal', _t('HtmlEditorField.PAGE', "Page"), 'SiteTree', 'ID', 'MenuTitle', true);
-		// mimic the SiteTree::getMenuTitle(), which is bypassed when the search is performed
-		$siteTree->setSearchFunction(array($this, 'siteTreeSearchCallback'));
+		$fields = new FieldSet;
+
+		$fields->push(new LiteralField('Heading', '<h2><img src="cms/images/closeicon.gif" alt="' . _t('HtmlEditorField.CLOSE', 'close').'" title="' . _t('HtmlEditorField.CLOSE', 'close') . '" />' . _t('HtmlEditorField.LINK', 'Link') . '</h2>'));
+
+		// Build the link option set
+		$optionList = array();
+		$default = null;
+		$linkOptions = HtmlEditorConfig::get_active()->getLinkOptions();
+		if ($linkOptions) {
+			// Ordering
+			uasort($linkOptions, array("HtmlEditorField_LinkOption", "compare"));
+			foreach ($linkOptions as $name=>$option) {
+				$optionList[$name] = $option->title;
+				if (!isset($default)) $default = $name;
+			}
+			$fields->push(new OptionsetField('LinkType', _t('HtmlEditorField.LINKTO', 'Link to'), $optionList, $default));
+
+			// Add specific properties for each supported link type. FieldGroups visibility is later controlled by JS.
+			foreach ($linkOptions as $name=>$option) {
+				// Ensure unique name for all props - add a qualifier for each section
+				foreach($option->fields->FieldSet() as $field) {
+					$field->setName($name.'_'.$field->Name());
+				}
+				$option->fields->setID("LinkOptionFieldGroup$name");
+				$option->fields->addExtraClass('LinkOptionFieldGroup');
+				$fields->push($option->fields);
+			}
+		}
 		
 		$form = new Form(
 			$this->controller,
-			"{$this->name}/LinkForm", 
-			new FieldSet(
-				new LiteralField('Heading', '<h2><img src="cms/images/closeicon.gif" alt="' . _t('HtmlEditorField.CLOSE', 'close').'" title="' . _t('HtmlEditorField.CLOSE', 'close') . '" />' . _t('HtmlEditorField.LINK', 'Link') . '</h2>'),
-				new OptionsetField(
-					'LinkType',
-					_t('HtmlEditorField.LINKTO', 'Link to'), 
-					array(
-						'internal' => _t('HtmlEditorField.LINKINTERNAL', 'Page on the site'),
-						'external' => _t('HtmlEditorField.LINKEXTERNAL', 'Another website'),
-						'anchor' => _t('HtmlEditorField.LINKANCHOR', 'Anchor on this page'),
-						'email' => _t('HtmlEditorField.LINKEMAIL', 'Email address'),
-						'file' => _t('HtmlEditorField.LINKFILE', 'Download a file'),			
-					)
-				),
-				$siteTree,
-				new TextField('external', _t('HtmlEditorField.URL', 'URL'), 'http://'),
-				new EmailField('email', _t('HtmlEditorField.EMAIL', 'Email address')),
-				new TreeDropdownField('file', _t('HtmlEditorField.FILE', 'File'), 'File', 'Filename', 'Title', true),
-				new TextField('Anchor', _t('HtmlEditorField.ANCHORVALUE', 'Anchor')),
-				new TextField('LinkText', _t('HtmlEditorField.LINKTEXT', 'Link text')),
-				new TextField('Description', _t('HtmlEditorField.LINKDESCR', 'Link description')),
-				new CheckboxField('TargetBlank', _t('HtmlEditorField.LINKOPENNEWWIN', 'Open link in a new window?')),
-				new HiddenField('Locale', null, $this->controller->Locale)
-			),
+			"{$this->name}/LinkForm",
+			$fields,
 			new FieldSet(
 				new FormAction('insert', _t('HtmlEditorField.BUTTONINSERTLINK', 'Insert link')),
 				new FormAction('remove', _t('HtmlEditorField.BUTTONREMOVELINK', 'Remove link'))
@@ -263,9 +266,7 @@ class HtmlEditorField_Toolbar extends RequestHandler {
 		);
 		
 		$form->loadDataFrom($this);
-		
 		$this->extend('updateLinkForm', $form);
-		
 		return $form;
 	}
 
@@ -355,3 +356,47 @@ class HtmlEditorField_Toolbar extends RequestHandler {
 	}
 }
 
+/**
+ * This class describes one option for the linking sidebar.
+ */
+class HtmlEditorField_LinkOption {
+	/**
+	 * Option internal name handle.
+	 */
+	public $name;
+
+	/**
+	 * Option title to be shown in the backend.
+	 */
+	public $title;
+
+	/**
+	 * FieldSet of fields for this option.
+	 */
+	public $fields;
+
+	/**
+	 * Order in which the options will appear in the backend.
+	 */
+	public $order;
+	
+	/**
+	 * @param $name Name
+	 * @param $title Title
+	 * @param $fields FieldSet - fields
+	 * @param $order int - for ordering
+	 */
+	function __construct($name, $title, FieldGroup $fields, $order) {
+		$this->name = $name;
+		$this->title = $title;
+		$this->fields = $fields;
+		$this->order = $order;
+	}
+
+	/**
+	 * Provide ordering capability.
+	 */
+    static function compare($a, $b) {
+        return ($a->order > $b->order) ? +1 : -1;
+    }	
+}

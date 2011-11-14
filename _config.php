@@ -36,9 +36,10 @@ Director::addRules(1, array(
 ));
 
 /**
- * Register the default internal shortcodes.
+ * Register the default internal shortcodes
  */
-ShortcodeParser::get('default')->register('sitetree_link', array('SiteTree', 'link_shortcode_handler'));
+ShortcodeParser::get('default')->register('sitetree_link', array('SiteTree', 'link_shortcode_handler')); // Page linking
+ShortcodeParser::get('default')->register('asset_link', array('Page', 'asset_shortcode_parser')); // File linking
 
 /**
  * PHP 5.2 introduced a conflict with the Datetime field type, which was renamed to SSDatetime. This was later renamed

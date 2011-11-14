@@ -42,35 +42,24 @@ LinkForm.prototype = {
 		}
 	},
 	
+	/**
+	 * Show only the relevant subform
+	 */
 	linkTypeChanged: function(setDefaults) {
 		var linkType = Form.Element.getValue(this.elements.LinkType);
-		var list =  ['internal', 'external', 'file', 'email'];
-		var i,item;
-		for(i=0;item=list[i];i++) {
-			$(item).style.display = (item == linkType) ? '' : 'none';
-		}
-		$('Anchor').style.display = (linkType == 'internal' || linkType == 'anchor') ? '' : 'none';
- 		if($('Form_EditorToolbarLinkForm_TargetBlank')) {
- 		    $('Form_EditorToolbarLinkForm_TargetBlank').disabled = (linkType == 'email');
- 		    if(typeof setDefaults == 'undefined' || setDefaults) {
- 			$('Form_EditorToolbarLinkForm_TargetBlank').checked = (linkType == 'file');
- 		    }
-		}
+		jQuery('.LinkOptionFieldGroup').hide();
+		jQuery('#LinkOptionFieldGroup'+linkType).parents('.LinkOptionFieldGroup').show();
 		
-		if (jQuery('#Form_EditorToolbarLinkForm_AnchorSelector')) {
-			if ( linkType=='anchor' ) {
-				jQuery('#Form_EditorToolbarLinkForm_AnchorSelector').show();
-				jQuery('#Form_EditorToolbarLinkForm_AnchorRefresh').show();
-			} else {
-				jQuery('#Form_EditorToolbarLinkForm_AnchorSelector').hide();
-				jQuery('#Form_EditorToolbarLinkForm_AnchorRefresh').hide();
-			}
-		}
+		// Trigger the hook
+		if (this.onChangeType) this.onChangeType(linkType, setDefaults);
 	},
 
+	/**
+	 * Magic function that applies only to Anchor option
+	 */
 	addAnchorSelector: function() {
 		(function($) { 
-			if (!$('#Form_EditorToolbarLinkForm_AnchorSelector').length) {
+			if (!$('#Form_EditorToolbarLinkForm_Anchor_AnchorSelector').length) {
 				// this function collects the anchors in the currently active editor and regenerates the dropdown
 				var refreshAnchors = function(selector) {
 					var anchors = new Array();
@@ -92,15 +81,15 @@ LinkForm.prototype = {
 
 				// refresh the anchor selector on click, or in case of IE - button click
 				if( !tinymce.isIE ) {
-					var anchorSelector = $('<select id="Form_EditorToolbarLinkForm_AnchorSelector"></select>');
-					$('#Form_EditorToolbarLinkForm_Anchor').parent().append(anchorSelector);
+					var anchorSelector = $('<select id="Form_EditorToolbarLinkForm_Anchor_AnchorSelector"></select>');
+					$('#Form_EditorToolbarLinkForm_Anchor_Anchor').parent().append(anchorSelector);
 
 					anchorSelector.focus(function(e) {
 						refreshAnchors($(this));
 					});
 				} else {
-					var buttonRefresh = $('<a id="Form_EditorToolbarLinkForm_AnchorRefresh" title="Refresh the anchor list" alt="Refresh the anchor list" class="buttonRefresh"><span></span></a>');
-					var anchorSelector = $('<select id="Form_EditorToolbarLinkForm_AnchorSelector" class="hasRefreshButton"></select>');
+					var buttonRefresh = $('<a id="Form_EditorToolbarLinkForm_Anchor_AnchorRefresh" title="Refresh the anchor list" alt="Refresh the anchor list" class="buttonRefresh"><span></span></a>');
+					var anchorSelector = $('<select id="Form_EditorToolbarLinkForm_Anchor_AnchorSelector" class="hasRefreshButton"></select>');
 
 					$('#Form_EditorToolbarLinkForm_Anchor').parent().append(buttonRefresh).append(anchorSelector);
 
@@ -112,7 +101,7 @@ LinkForm.prototype = {
 						buttonRefresh.removeClass('buttonRefreshHover');
 					});
 					buttonRefresh.click(function(e) {
-						var anchorSelector = $('#Form_EditorToolbarLinkForm_AnchorSelector');
+						var anchorSelector = $('#Form_EditorToolbarLinkForm_Anchor_AnchorSelector');
 						refreshAnchors(anchorSelector);
 					});
 				}
@@ -122,7 +111,7 @@ LinkForm.prototype = {
 
 				// copy the value from dropdown to the text field
 				anchorSelector.change(function(e) {
-					$('#Form_EditorToolbarLinkForm_Anchor').val($(this).val());
+					$('#Form_EditorToolbarLinkForm_Anchor_Anchor').val($(this).val());
 				});
 			}
 		})(jQuery);	
@@ -147,87 +136,101 @@ LinkForm.prototype = {
 	    }
     },
 	
+	/**
+	 * Called when the user makes a selection.
+	 */
 	respondToNodeChange: function(ed) {
 	    if(ed == null) ed = tinyMCE.activeEditor;
 	    
 		if(this.style.display == 'block') {
-			var i,data = this.getCurrentLink(ed);
+			var matched;
+			var selectionData = this.parseSelection(ed);
+
+			// Trigger the hook
+			if (this.onSelect) this.onSelect(selectionData);
+
+			// Sort type handlers by priority
+			var types = new Array();
+			for (var linkType in this.handlers) {
+				if (this.handlers[linkType].priority) {
+					types[types.length++] = {name: linkType, priority: this.handlers[linkType].priority};
+				}
+			}
+			types.sort(function(a, b) {
+				return a.priority>b.priority ? 1 : -1;
+			});
+
+			// Try to match selection to a link type
+			for (var i=0; i<types.length; i++) {
+				var linkType = types[i].name;
+
+				if (this.handlers[linkType] && this.handlers[linkType].matching) {
+					matched = this.handlers[linkType].matching(selectionData); 
+					if (matched) break;
+				}
+			}
+
+			// The link pattern does not match - fall back to catch-all 
+			if (!matched && this.handlers && this.handlers.__notMatching) {
+				matched = this.handlers.__notMatching(selectionData.linkText);
+			}
 			
-			if(data) {
-				for(i in data) {
-					if(this.elements[i]) {
-						Form.Element.setValue(this.elements[i], data[i]);
+			if (matched) {
+				// Link found, reverse-populate the form fields and switch to appropriate option
+				for(var field in matched) {
+					var fieldName = matched.LinkType+'_'+field;
+					if(this.elements[fieldName]) {
+						Form.Element.setValue(this.elements[fieldName], matched[field]);
 					}
 				}
-				
-			// If we haven't selected an existing link, then just make sure we default to "internal" for the link
-			// type.
+				Form.Element.setValue(this.elements.LinkType, matched.LinkType);
 			} else {
-				if(!Form.Element.getValue(this.elements.LinkType)) Form.Element.setValue(this.elements.LinkType, 'internal');
+				// Not a link, default to Internal link type.
+				if(!Form.Element.getValue(this.elements.LinkType)) Form.Element.setValue(this.elements.LinkType, 'Internal');
 			}
-			this.linkTypeChanged(data ? false : true);
+
+			this.linkTypeChanged(matched ? false : true);
 		}
 	},
-	
+
+	/**
+	 * Insert button has been pressed. Translates the linking form input into a link
+	 * using the handlers store in LinkForm.handlers.
+	 */
 	handleaction_insert: function() {
 		var href;
 		var target = null;
 		
-		switch(Form.Element.getValue(this.elements.LinkType)) {
-			case 'internal':
-				href = '[sitetree_link id=' + this.elements.internal.value + ']';
-				if(this.elements.Anchor.value) href += '#' + this.elements.Anchor.value;
-				if($('Form_EditorToolbarLinkForm_TargetBlank')) {
-					if($('Form_EditorToolbarLinkForm_TargetBlank').checked) target = '_blank';
-				}
-				break;
+		// Fetch the params from respective handler 
+		var linkType = Form.Element.getValue(this.elements.LinkType);
+		var values = {};
+		var form = this;
 
-			case 'anchor':
-				href = '#' + this.elements.Anchor.value; 
-				if($('Form_EditorToolbarLinkForm_TargetBlank')) {
-					if($('Form_EditorToolbarLinkForm_TargetBlank').checked) target = '_blank';
-				}
-				break;
-			
-			case 'file':
-				href = this.elements.file.value;
-				target = '_blank';
-				break;
-			
-			case 'email':
-				href = 'mailto:' + this.elements.email.value; 
-				break;
+		if (!this.handlers[linkType] || !this.handlers[linkType].inserting) throw({message:"CMS is misconfigured: I don't know how to insert this link."});
 
-			case 'external':
-			default:
-				href = this.elements.external.value;
-				// Prefix the URL with "http://" if no prefix is found
-				if(href.indexOf('://') == -1) {
-					href = 'http://' + href;
-				}
-				if($('Form_EditorToolbarLinkForm_TargetBlank')) {
-				    if($('Form_EditorToolbarLinkForm_TargetBlank').checked) target = '_blank';
-				}
-				break;
-		}
+		// Get all values from the current subform
+		jQuery('#Form_EditorToolbarLinkForm :input[name^="'+linkType+'_"]').each(function() {
+			var val = Form.Element.getValue(form.elements[this.name]);
+			var parts = this.name.split('_');
+			if (parts[0]==linkType) {
+				values[parts[1]] = val;
+			}
+		});
+		var params = this.handlers[linkType].inserting(values);
+		if (!params) return;
 
 		if(this.originalSelection) {
 		    tinyMCE.activeEditor.selection.setRng(this.originalSelection);
 		}
 		
-		var attributes = {
-		    href : href, 
-		    target : target, 
-		    title : this.elements.Description.value,
-		    innerHTML : this.elements.LinkText.value ? this.elements.LinkText.value : "Your Link"
-		};
+		if (!params.innerHTML) params.innerHTML = "Your Link";
 
         // Add the new link
-		this.ssInsertLink(tinyMCE.activeEditor, attributes, this);
+		this.ssInsertLink(tinyMCE.activeEditor, params, this);
 	},
 	
 	/**
-	 * Insert a link into the given editor.
+	 * Worker function to insert a link into the given editor.
 	 * Replaces mceInsertLink in that innerHTML can also be set
 	 */
 	ssInsertLink: function(ed, attributes, linkFormObj) {
@@ -277,15 +280,21 @@ LinkForm.prototype = {
 		this.respondToNodeChange(ed);
 	},
 	
+	/**
+	 * Called when the remove link button is clicked.
+	 */
 	handleaction_remove: function() {
 		tinyMCE.activeEditor.execCommand('unlink', false);
+
+		// Trigger the hook
+		if (this.onRemove) this.onRemove();
 	},
 	
 	/**
-	 * Return information about the currently selected link, suitable for population of the link
-	 * form.
+	 * Try to extract <a> tag properties from a selection. If it's not a link, it will still provide
+	 * the selected text in the linkText field.
 	 */
-	getCurrentLink: function(ed) {
+	parseSelection: function(ed) {
 	    if(ed == null) ed = tinyMCE.activeEditor;
 	    
 		var selectedText = "";
@@ -364,54 +373,34 @@ LinkForm.prototype = {
 		
 		// Get rid of TinyMCE's temporary URLs
 		if(href.match(/^javascript:\s*mctmp/)) href = '';
-		
-		if(href.match(/^mailto:(.*)$/)) {
-			return {
-				LinkType: 'email',
-				email: RegExp.$1,
-				LinkText: linkText,
-				Description: title
-			}
-		} else if(href.match(/^(assets\/.*)$/)) {
-			return {
-				LinkType: 'file',
-				file: RegExp.$1,
-				LinkText: linkText,
-				Description: title
-			}
-		} else if(href.match(/^#(.*)$/)) {
-			return {
-				LinkType: 'anchor',
-				Anchor: RegExp.$1,
-				LinkText: linkText,
-				Description: title,
-				TargetBlank: target ? true : false
-			}
-		} else if(href.match(/^\[sitetree_link id=([0-9]+)\]?(#.*)?$/)) {
-			return {
-				LinkType: 'internal',
-				internal: RegExp.$1,
-				Anchor: RegExp.$2 ? RegExp.$2.substr(1) : '',
-				LinkText: linkText,
-				Description: title,
-				TargetBlank: target ? true : false
-			}
-		} else if(href) {
-			return {
-				LinkType: 'external',
-				external: href,
-				LinkText: linkText,
-				Description: title,
-				TargetBlank: target ? true : false
-			}
-		} else {
-		    return {
-				LinkType: 'internal',
-		        LinkText: linkText
-		    }
-		}
+
+		return {
+			href: href,
+			linkText: linkText,
+			title: title,
+			target: target
+		};
 	}		
 	
+}
+
+/**
+ * Customise this if you need some special action to be performed when the text selection is changed.
+ *
+ * @param selectionData Parsed <a> tag properties.
+ */
+LinkForm.prototype.onSelect = function(selectionData) {
+	var form = this;
+	if (selectionData.linkText) {
+		jQuery('#Form_EditorToolbarLinkForm :input[name$="_LinkText"]').each(function() {
+			Form.Element.setValue(form.elements[this.name], selectionData.linkText);
+		});
+	}
+	if (selectionData.title) {
+		jQuery('#Form_EditorToolbarLinkForm :input[name$="_Description"]').each(function() {
+			Form.Element.setValue(form.elements[this.name], selectionData.title);
+		});
+	}
 }
 
 SideFormAction = Class.create();

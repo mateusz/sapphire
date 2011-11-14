@@ -75,4 +75,46 @@ class HtmlEditorConfigTest extends SapphireTest {
 		$this->assertContains('plugin1', $c->generateJS());
 		$this->assertContains('tinymce.PluginManager.load("plugin2", "/mypath/plugin2");', $c->generateJS());
 	}
+
+	function testLinkOptions() {
+		$c = new HtmlEditorConfig();
+		$c->addLinkOption(new HtmlEditorField_LinkOption(
+			'Test1',
+			'Test1',
+			new FieldGroup(),
+			10
+		));
+		$c->addLinkOption(new HtmlEditorField_LinkOption(
+			'Test2',
+			'Test2',
+			new FieldGroup(),
+			20
+		));
+
+		$options = $c->getLinkOptions();
+		$this->assertEquals(count($options), 2);
+		$this->assertEquals($options['Test1']->name, 'Test1');
+
+		$c->removeLinkOption('Test1');
+		$options = $c->getLinkOptions();
+		$this->assertEquals(count($options), 1);
+		$this->assertEquals($options['Test2']->name, 'Test2');
+
+		$c->resetLinkOptions();
+		$options = $c->getLinkOptions();
+		$this->assertEquals(count($options), 0);
+	}
+
+	function testLinkScripts() {
+		$c = new HtmlEditorConfig();
+		$c->addLinkScript('script.js');
+		
+		$scripts = $c->getLinkScripts();
+		$this->assertEquals(count($scripts), 1);
+		$this->assertEquals($scripts[0], 'script.js');
+
+		$c->resetLinkScripts();
+		$scripts = $c->getLinkScripts();
+		$this->assertEquals(count($scripts), 0);
+	}
 }

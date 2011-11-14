@@ -377,6 +377,34 @@ class SiteTree extends DataObject implements PermissionProvider,i18nEntityProvid
 			return $page->Link();
 		}
 	}
+
+	/**
+	 * Replace a "[asset_link id=n]" shortcode with a link to the file with the corresponding ID.
+	 *
+	 * @param $arguments File ID comes through this array, named "id"
+	 */
+	static function asset_shortcode_parser($arguments, $content = null, $parser = null) {
+		if(!isset($arguments['id']) || !is_numeric($arguments['id'])) return;
+		
+		$errorPage = DataObject::get_one('ErrorPage', '"ErrorCode" = \'404\'');
+		
+		// get the document file 
+		$file = DataObject::get_by_id('File', $arguments['id']);
+		
+		if ( !$file && !$errorPage )
+			return; // we have nothing meaningful to return
+		
+		if( $content ) {
+			user_error('This path is not implemented', E_USER_ERROR);
+		} else if ( !$file ) {
+			return $errorPage->Link();
+		} else {
+			$size = 'type:{'.$file->getExtension().'} size:{'.$file->getSize().'}';
+		
+			// Warning: medium-evil shortcode injection, so we can have file type and size exposed for jQuery.data.
+			return $file->getURL()."\" class=\"$size file";
+		}
+	}
 	
 	/**
 	 * Return the link for this {@link SiteTree} object, with the {@link Director::baseURL()} included.

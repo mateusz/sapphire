@@ -182,6 +182,35 @@ class HtmlEditorFieldTest extends FunctionalTest {
 		$this->assertTrue(HtmlEditorFieldTest_DummyImageFormFieldExtension::$update_called);
 		$this->assertEquals($imageForm->Fields(), HtmlEditorFieldTest_DummyImageFormFieldExtension::$fields);
 	}
+
+	public function testCustomLinking() {
+		$c = HtmlEditorConfig::get_active();
+		$c->resetLinkOptions();
+		$c->addLinkOption(new HtmlEditorField_LinkOption(
+			'Test2',
+			'Test2',
+			new FieldGroup(new TextField('Test2Text')),
+			20	
+		));
+		$c->addLinkOption(new HtmlEditorField_LinkOption(
+			'Test1',
+			'Test1',
+			new FieldGroup(new TextField('Test1TextA'), new TextField('Test1TextB')),
+			10
+		));
+
+		$controller = new ContentController();
+		$toolbar = new HtmlEditorField_Toolbar($controller, 'DummyToolbar');
+
+		$linkForm = $toolbar->LinkForm();
+		$field = $linkForm->dataFieldByName('LinkType');
+		$options = $field->getSource();
+		$this->assertEquals($options, array('Test1'=>'Test1', 'Test2'=>'Test2'), "Options are present in correct order");
+
+		$this->assertNotNull($linkForm->dataFieldByName('Test1_Test1TextA'), "Property fields for option 1 exist and are auto-prefixed");
+		$this->assertNotNull($linkForm->dataFieldByName('Test1_Test1TextB'), "Property fields for option 1 exist and are auto-prefixed");
+		$this->assertNotNull($linkForm->dataFieldByName('Test2_Test2Text'), "Property fields for option 2 exist and are auto-prefixed");
+	}
 }
 
 /**

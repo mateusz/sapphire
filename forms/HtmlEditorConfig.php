@@ -106,6 +106,16 @@ class HtmlEditorConfig {
 	);
 
 	/**
+	 * List of all link options for the linking sidebar.
+	 */
+	private $linkOptions = array();
+
+	/**
+	 * List of external scripts to load, that should contain all handlers for the linking sidebar options.
+	 */
+	private $linkScripts = array();
+
+	/**
 	 * Get the current value of an option
 	 * @param $k string - The key of the option to get
 	 * @return mixed - The value of the specified option 
@@ -135,6 +145,62 @@ class HtmlEditorConfig {
 		}
 	}
 	
+	/**
+	 * Add new link option to linking sidebar.
+	 * @param $option HtmlEditorField_LinkOption - add new option to the list
+	 */
+	function addLinkOption(HtmlEditorField_LinkOption $option) {
+		$this->linkOptions[$option->name] = $option;
+	}
+
+	/**
+	 * Remove one option.
+	 * @param $name Name of the option to remove
+	 */
+	function removeLinkOption($name) {
+		if (isset($this->linkOptions[$name])) {
+			unset($this->linkOptions[$name]);
+		}
+	}
+
+	/**
+	 * Get the array of options for linking sidebar.
+	 * @return array - All options
+	 */
+	function getLinkOptions() {
+		return $this->linkOptions;
+	}
+
+	/**
+	 * Remove all options.
+	 */
+	function resetLinkOptions() {
+		$this->linkOptions = array();
+	}
+
+	/**
+	 * Add javascript handler scripts for linking sidebar.
+	 * @param $script path to script to include (eg. mysite/javascript/custom_linking.js)
+	 */
+	function addLinkScript($script) {
+		$this->linkScripts[] = $script;
+	}
+
+	/**
+	 * Get the array of scripted handlers for linking sidebar.
+	 * @return array - All scripts
+	 */
+	function getLinkScripts() {
+		return $this->linkScripts;
+	}
+
+	/**
+	 * Remove all handler scripts from linking sidebar.
+	 */
+	function resetLinkScripts() {
+		$this->linkScripts = array();
+	}
+
 	/**
 	 * Enable one or several plugins. Will maintain unique list if already 
 	 * enabled plugin is re-passed. If passed in as a map of plugin-name to path,
@@ -299,11 +365,24 @@ class HtmlEditorConfig {
 			$config['theme_advanced_buttons'.$i] = implode(',', $buttons);
 		}
 		
+		// Inject all linking handler scripts. We can't use Requirements::javascript, 
+		// because these need to be loaded after tiny_mce_improvements.js.
+		$linkingScripts = "";
+		if (count($this->linkScripts)) {
+			foreach ($this->linkScripts as $script) {
+				if (file_exists(BASE_PATH.'/'.$script)) {
+					$linkingScripts .= file_get_contents(BASE_PATH.'/'.$script);
+				}
+			}
+		}
+		
 		return "
 if((typeof tinyMCE != 'undefined')) {
 	$externalPluginsJS
 	tinyMCE.init(" . Convert::raw2json($config) . ");
 }
+
+$linkingScripts
 ";
 	}
 }
