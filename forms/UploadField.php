@@ -828,7 +828,10 @@ class UploadField_ItemHandler extends RequestHandler {
 	
 }
 
-
+/**
+ * @todo search only for files of given Class - otherwise the relationship autosetting will crash
+ * @todo IE8 attaching the file does not work
+ */
 class UploadField_SelectHandler extends RequestHandler {
 
 	/**
