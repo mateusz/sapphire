@@ -177,7 +177,22 @@
 		 */
 		addUndo: function() {
 			this.getInstance().undoManager.add();
+		},
+		/**
+		 * Destroy this instance of the editor, free the memory.
+		 */
+		destroy: function() {
+			var editorInstance = this.getInstance();
+			if (typeof editorInstance==='undefined') return; // Nothing to do, no instance has been initialised.
+			
+			// ?
+			var container = this.getContainer();
+			if (container && container.length) container.remove();
+
+			// Remove references to the editor, destroy DOM.
+			editorInstance.remove();
 		}
+
 	};
 });
 // Override this to switch editor wrappers
@@ -252,8 +267,9 @@ ss.editorWrappers['default'] = ss.editorWrappers.tinyMCE;
 				// TODO Move to onunmatch for less coupling (once we figure out how to work with detached DOM nodes in TinyMCE)
 				$('.cms-container').bind('beforestatechange', function() {
 					self.css('visibility', 'hidden');
-					var container = ed.getInstance() ? ed.getContainer() : null;
-					if(container && container.length) container.remove();
+					
+					// Destroy the editor, free the memory and DOM.
+					ed.destroy();
 				});
 
 				this._super();
