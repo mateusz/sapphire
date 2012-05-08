@@ -1181,6 +1181,16 @@ class LeftAndMain extends Controller implements PermissionProvider {
 	}
 
 	/**
+	 * Textual status for the record shown through this controller. Should be set
+	 * to the latest successful backend action, e.g. "Saved at 4:15pm".
+	 *
+	 * The JS could update the status according to the frontend changes.
+	 */
+	public function TextualStatus() {
+		return false;
+	}
+
+	/**
 	 * Return the version number of this application.
 	 * Uses the subversion path information in <mymodule>/silverstripe_version
 	 * (automacially replaced by build scripts).

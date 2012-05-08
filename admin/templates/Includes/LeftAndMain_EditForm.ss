@@ -59,6 +59,9 @@
 				<% _t('LeftAndMain.PreviewButton', 'Preview') %> &raquo;
 			</a>
 			<% end_if %>
+			<% if Controller.TextualStatus %>
+				<span class="cms-textual-status">$TextualStatus</span>
+			<% end_if %>
 		</div>
 		<% end_if %>
 	</div>
