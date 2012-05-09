@@ -262,6 +262,9 @@ jQuery.noConflict();
 						var styles = newContentEl.find('style').detach();
 						if(styles.length) $(document).find('head').append(styles);
 
+						// Clean up the tree - we won't have a chance after it's replaced, the data will be gone!
+						contentEl.find('.cms-tree').jstree('destroy');
+
 						// Replace panel completely (we need to override the "layout" attribute, so can't replace the child instead)
 						contentEl.replaceWith(newContentEl);
 
