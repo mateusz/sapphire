@@ -441,6 +441,11 @@
 					.find("[class^='jstree']")
 						.andSelf()
 						.attr("class", function () { return this.className.replace(/jstree[^ ]*|$/ig,''); });
+				this.get_container = null;
+				this.get_container_ul = null;
+				this.get_settings = null;
+				this._get_settings = null;
+				this._set_settings = null;
 				$(document)
 					.unbind(".jstree-" + n)
 					.undelegate(".jstree-" + n);
