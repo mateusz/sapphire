@@ -51,7 +51,7 @@ jQuery.noConflict();
 			// Handle custom status message headers
 			var msg = (xhr.getResponseHeader('X-Status')) ? xhr.getResponseHeader('X-Status') : xhr.statusText,
 				msgType = (xhr.status < 200 || xhr.status > 399) ? 'bad' : 'good',
-				ignoredMessages = ['OK'];
+				ignoredMessages = ['OK', 'abort'];
 
 			// Show message (but ignore aborted requests)
 			if(xhr.status !== 0 && msg && $.inArray(msg, ignoredMessages)) {
