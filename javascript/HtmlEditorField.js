@@ -265,7 +265,7 @@ ss.editorWrappers['default'] = ss.editorWrappers.tinyMCE;
 				
 				// Handle editor de-registration by hooking into state changes.
 				// TODO Move to onunmatch for less coupling (once we figure out how to work with detached DOM nodes in TinyMCE)
-				$('.cms-container').bind('beforestatechange', function() {
+				$('.cms-container').bind('beforestatechange.htmleditorfield', function() {
 					self.css('visibility', 'hidden');
 					
 					// Destroy the editor, free the memory and DOM.
@@ -319,6 +319,7 @@ ss.editorWrappers['default'] = ss.editorWrappers.tinyMCE;
 				// TODO Throws exceptions in Firefox, most likely due to the element being removed from the DOM at this point
 				// var ed = tinyMCE.get(this.attr('id'));
 				// if(ed) ed.remove();
+				$('.cms-container').unbind('.htmleditorfield');
 
 				this._super();
 			}

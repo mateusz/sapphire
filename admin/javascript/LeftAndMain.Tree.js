@@ -96,7 +96,7 @@
 							});
 						});
 					
-					this.parents('.cms-container').bind('afterstatechange', function(e, data) {
+					this.parents('.cms-container').bind('afterstatechange.leftandmain', function(e, data) {
 						self._onLoadNewPage(e, data);
 					});
 			},
@@ -267,7 +267,7 @@
 
 			},
 			onunmatch: function() {
-
+				$('.cms-container').unbind('.leftandmain');
 			}
 		});
 		
