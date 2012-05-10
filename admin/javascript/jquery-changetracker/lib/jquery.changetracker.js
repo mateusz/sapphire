@@ -67,8 +67,8 @@
 			
 			// setup original values
 			var fields = this.getFields();
-			fields.filter(':radio,:checkbox').bind('click', onchange);
-			fields.not(':radio,:checkbox').bind('change', onchange);
+			fields.filter(':radio,:checkbox').bind('click.changetracker', onchange);
+			fields.not(':radio,:checkbox').bind('change.changetracker', onchange);
 			fields.each(function() {
 				var origVal = $(this).is(':radio,:checkbox') ? self.find(':input[name=' + $(this).attr('name') + ']:checked').val() : $(this).val();
 				$(this).data('changetracker.origVal', origVal);
@@ -103,6 +103,12 @@
 		 */
 		this.getFields = function() {
 			return this.find(options.fieldSelector).not(options.ignoreFieldSelector);
+		};
+
+		this.destroy = function() {
+			var fields = this.getFields();
+			fields.filter(':radio,:checkbox').unbind('.changetracker');
+			fields.not(':radio,:checkbox').unbind('.changetracker');
 		};
 
 		// Support invoking "public" methods as string arguments

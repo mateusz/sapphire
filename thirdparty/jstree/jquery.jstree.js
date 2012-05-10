@@ -447,8 +447,10 @@
 				this._get_settings = null;
 				this._set_settings = null;
 				$(document)
+					.unbind(".vakata")
 					.unbind(".jstree-" + n)
 					.undelegate(".jstree-" + n);
+				this.data = null;
 				// remove the actual data
 				instances[n] = null;
 				delete instances[n];

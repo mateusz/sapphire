@@ -103,6 +103,10 @@
 				this._super();
 			},
 						
+			onunmatch: function() {
+				//this.changetracker('destroy');
+			},
+
 			redraw: function() {
 				// Force initialization of tabsets to avoid layout glitches
 				this.add(this.find('.cms-tabset')).redrawTabs();

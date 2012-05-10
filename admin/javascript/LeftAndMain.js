@@ -264,6 +264,7 @@ jQuery.noConflict();
 
 						// Clean up the tree - we won't have a chance after it's replaced, the data will be gone!
 						contentEl.find('.cms-tree').jstree('destroy');
+						contentEl.find('.cms-edit-form').changetracker('destroy');
 
 						// Replace panel completely (we need to override the "layout" attribute, so can't replace the child instead)
 						contentEl.replaceWith(newContentEl);
