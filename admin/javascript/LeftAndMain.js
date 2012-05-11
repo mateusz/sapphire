@@ -497,21 +497,13 @@ jQuery.noConflict();
 				// Explicitly disable default placeholder if no custom one is defined
 				if(!this.data('placeholder')) this.data('placeholder', ' ');
 
+				// We could've gotten stale classes and DOM elements from deferred cache.
+				this.removeClass('has-chzn chzn-done');
+				this.siblings('.chzn-container').remove();
+
 				// Apply Chosen
 				applyChosen(this);
 				
-				this._super();
-			},
-
-			/**
-			 * Remove chosen by hand, so the HTML is clean and can be cached.
-			 * Currently Chosen doesn't support a way of removing it from elements.
-			 */
-			onunmatch: function() {
-				// Remove Chosen classes.
-				this.removeClass('.has-chzn').removeClass('.chzn-done');
-				this.siblings('.chzn-container').remove();
-
 				this._super();
 			}
 		});	
