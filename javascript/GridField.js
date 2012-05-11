@@ -227,6 +227,7 @@
 					filterbtn.addClass('filtered');
 					resetbtn.addClass('filtered');
 				}
+				this._super();
 			},
 			onkeydown: function(e) {
 				filterbtn = this.closest('.fieldgroup').find('.ss-gridfield-button-filter');
