@@ -501,6 +501,18 @@ jQuery.noConflict();
 				applyChosen(this);
 				
 				this._super();
+			},
+
+			/**
+			 * Remove chosen by hand, so the HTML is clean and can be cached.
+			 * Currently Chosen doesn't support a way of removing it from elements.
+			 */
+			onunmatch: function() {
+				// Remove Chosen classes.
+				this.removeClass('.has-chzn').removeClass('.chzn-done');
+				this.siblings('.chzn-container').remove();
+
+				this._super();
 			}
 		});	
 	
