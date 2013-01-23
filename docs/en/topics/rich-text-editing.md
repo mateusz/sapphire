@@ -27,21 +27,120 @@ To keep the JavaScript editor configuration manageable and extensible,
 we've wrapped it in a PHP class called `[api:HtmlEditorConfig]`.
 The class comes with its own defaults, which are extended through the `_config.php`
 files in the framework (and the `cms` module in case you've got that installed).
-There can be multiple configs, which should always be created / accessed using `[api:HtmlEditorConfig::get]. 
+There can be multiple configs, which should always be created / accessed using `[api:HtmlEditorConfig::get]`. 
 You can then set  the currently active config using `set_active()`. 
 By default, a config named 'cms' is used in any field created throughout the CMS interface.
 
-Example: Enable the "media" plugin:
+<div class="notice" markdown='1'>
+Caveat: currently the order in which the `_config.php` files are executed depends on the module directory
+names. Execution order is alphabetical, so if you set a TinyMCE option in the `aardvark/_config.php`, this
+will be overriden in `framework/admin/_config.php` and your modification will disappear.
+
+This is a general problem with `_config.php` files - it may be fixed in the future by making it possible to
+configure the TinyMCE with the new [configuration system](../topics/configuration).
+</div>
+
+### Adding and removing capabilities
+
+In its simplest form, the configuration of the editor includes adding and removing buttons and plugins. 
+
+You can add plugins to the editor using the Framework's `[api:HtmlEditorConfig::enablePlugins]` method. This will
+transparently generate the relevant underlying TinyMCE code.
 
 	:::php
 	// File: mysite/_config.php
 	HtmlEditorConfig::get('cms')->enablePlugins('media');
+	
+Note: this utilises the TinyMCE's `PluginManager::load` function under the hood (check the 
+[TinyMCE documentation on plugin
+loading](http://www.tinymce.com/wiki.php/API3:method.tinymce.AddOnManager.load) for details).
 
-Example: Remove some buttons for more advanced formatting
+Plugins and advanced themes can provide additional buttons that can be added (or removed) through the
+configuration. Here is an example of adding a `ssmacron` button after the `charmap` button:
+
+	:::php
+	// File: mysite/_config.php
+	HtmlEditorConfig::get('cms')->insertButtonsAfter('charmap', 'ssmacron');
+
+Buttons can also be removed:
 
 	:::php
 	// File: mysite/_config.php
 	HtmlEditorConfig::get('cms')->removeButtons('tablecontrols', 'blockquote', 'hr');
+
+Note: internally `[api:HtmlEditorConfig]` uses the TinyMCE's `theme_advanced_buttons` option to configure these. See
+the [TinyMCE documentation of this option](http://www.tinymce.com/wiki.php/Configuration:theme_advanced_buttons_1_n)
+for more details.
+
+### Setting options
+
+TinyMCE behaviour can be affected through its [configuration options](http://www.tinymce.com/wiki.php/Configuration).
+These options will be passed straight to the editor.
+
+One example of the usage of this capability is to redefine the TinyMCE's [whitelist of HTML
+tags](http://www.tinymce.com/wiki.php/Configuration:extended_valid_elements) - the tags that will not be stripped
+from the HTML source by the editor.
+
+	:::php
+	// Add start and type attributes for <ol>, add <object> and <embed> with all attributes.
+	HtmlEditorConfig::get('cms')->setOption(
+		'extended_valid_elements', 
+		'img[class|src|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name|usemap],' .
+		'iframe[src|name|width|height|title|align|allowfullscreen|frameborder|marginwidth|marginheight|scrolling],' .
+		'object[classid|codebase|width|height|data|type],' .
+		'embed[src|type|pluginspage|width|height|autoplay],' .
+		'param[name|value],' .
+		'map[class|name|id],' .
+		'area[shape|coords|href|target|alt],' .
+		'ol[start|type]'
+	);
+
+Note: the default setting for the CMS's `extended_valid_elements` we are overriding here can be found in 
+`framework/admin/_config.php`.
+
+### Writing custom plugins
+
+It is also possible to add custom buttons to TinyMCE. A simple example of this is SilverStripe's `ssmacron`
+plugin. The source can be found in the Framework's `thirdparty/tinymce_ssmacron` directory.
+
+Here is how we can create a project-specific plugin. Create a `mysite/javascript/myplugin` directory,
+add the plugin button icon - here `myplugin.png` - and the source code - here `editor_plugin.js`. Here is a very
+simple example of a plugin that adds a button to the editor:
+
+(function() {
+	tinymce.create('tinymce.plugins.myplugin', {
+
+		init : function(ed, url) {
+			var self = this;
+
+			ed.addButton ('myplugin', {
+				'title' : 'My plugin',
+
+				'image' : url+'/myplugin.png',
+
+				'onclick' : function () {
+					alert('Congratulations! Your plugin works!');
+				}
+			});
+
+		},
+
+		getInfo : function() {
+			return {
+				longname  : 'myplugin',
+				author 	  : 'Me',
+				authorurl : 'http://me.org.nz/',
+				infourl   : 'http://me.org.nz/myplugin/',
+				version   : "1.0"
+			};
+		}
+	});
+
+	tinymce.PluginManager.add('myplugin', tinymce.plugins.myplugin);
+})();
+
+For more complex examples see the [Creating a Plugin](http://www.tinymce.com/wiki.php/Creating_a_plugin) in TinyMCE
+documentation, or browse through plugins that come with the Framework at `thirdparty/tinymce/plugins`.
 
 ## Image and Media Insertion
 
