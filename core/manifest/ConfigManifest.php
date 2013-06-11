@@ -115,10 +115,6 @@ class SS_ConfigManifest {
 	public function variantKey() {
 		$key = $this->variantKeySpec; // Copy to fill in actual values
 
-		if (isset($key['environment'])) {
-			$key['environment'] = Director::isDev() ? 'dev' : (Director::isTest() ? 'test' : 'live');
-		}
-
 		if (isset($key['envvars'])) foreach ($key['envvars'] as $variable => $foo) {
 			$key['envvars'][$variable] = isset($_ENV[$variable]) ? $_ENV[$variable] : null;
 		}
@@ -456,10 +452,6 @@ class SS_ConfigManifest {
 					// already know if the class or module exists
 					break;
 
-				case 'environment':
-					$this->variantKeySpec['environment'] = true;
-					break;
-
 				case 'envvarset':
 					if (!isset($this->variantKeySpec['envvars'])) $this->variantKeySpec['envvars'] = array();
 					$this->variantKeySpec['envvars'][$k] = $k;
@@ -505,22 +497,7 @@ class SS_ConfigManifest {
 			switch (strtolower($k)) {
 				case 'classexists':
 				case 'moduleexists':
-					break;
-
-				case 'environment':
-					switch (strtolower($v)) {
-						case 'live':
-							if (!Director::isLive()) return false;
-							break;
-						case 'test':
-							if (!Director::isTest()) return false;
-							break;
-						case 'dev':
-							if (!Director::isDev()) return false;
-							break;
-						default:
-							user_error('Unknown environment '.$v.' in config fragment', E_USER_ERROR);
-					}
+					// Checked by the prefilterYamlFragments.
 					break;
 
 				case 'envvarset':
