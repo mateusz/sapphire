@@ -391,10 +391,15 @@ class SS_ConfigManifest {
 		$matchingFragments = array();
 
 		foreach ($this->yamlConfigFragments as $i => $fragment) {
-			$failsonly = isset($fragment['only']) && !$this->matchesPrefilterVariantRules($fragment['only']);
-			$matchesexcept = isset($fragment['except']) && $this->matchesPrefilterVariantRules($fragment['except']);
 
-			if (!$failsonly && !$matchesexcept) $matchingFragments[] = $fragment;
+			if (
+				$this->satisfiesPrefilterVariantRules($fragment, 'only')
+				&&
+				$this->satisfiesPrefilterVariantRules($fragment, 'except')
+			) {
+				$matchingFragments[] = $fragment;
+			}
+
 		}
 
 		$this->yamlConfigFragments = $matchingFragments;
@@ -403,24 +408,32 @@ class SS_ConfigManifest {
 	/**
 	 * Returns false if the prefilterable parts of the rule aren't met, and true if they are
 	 *
-	 * @param  $rules array - A hash of rules as allowed in the only or except portion of a config fragment header
-	 * @return bool - True if the rules are met, false if not. (Note that depending on whether we were passed an
-	 *                only or an except rule,
-	 * which values means accept or reject a fragment 
+	 * @param $fragment array - the fragment to check.
+	 * @param $type - 'only' or 'except'.
+	 * @return bool - True if the rules are met, false if not.
 	 */
-	public function matchesPrefilterVariantRules($rules) {
-		foreach ($rules as $k => $v) {
+	public function satisfiesPrefilterVariantRules($fragment, $type) {
+		if (!in_array($type, array('only', 'except'))) user_error("Rule type $type not supported.");
+
+		if (!isset($fragment[$type])) {
+			// No rules of this type found. Default to "all rules satisfied".
+			return true;
+		}
+
+		foreach ($fragment[$type] as $k => $v) {
 			switch (strtolower($k)) {
 				case 'classexists':
-					if (!ClassInfo::exists($v)) return false;
+					if ($type=='only' && !ClassInfo::exists($v)) return false;
+					if ($type=='except' && ClassInfo::exists($v)) return false;
 					break;
 
 				case 'moduleexists':
-					if (!$this->moduleExists($v)) return false;
+					if ($type=='only' && !$this->moduleExists($v)) return false;
+					if ($type=='except' && $this->moduleExists($v)) return false;
 					break;
 				
 				default:
-					// NOP
+					// No other rules are prefilterable. They all automatically satisfy.
 			}
 		}
 
@@ -478,10 +491,14 @@ class SS_ConfigManifest {
 		$this->yamlConfig = array();
 
 		foreach ($this->yamlConfigFragments as $i => $fragment) {
-			$failsonly = isset($fragment['only']) && !$this->matchesVariantRules($fragment['only']);
-			$matchesexcept = isset($fragment['except']) && $this->matchesVariantRules($fragment['except']);
 
-			if (!$failsonly && !$matchesexcept) $this->mergeInYamlFragment($this->yamlConfig, $fragment['fragment']);
+			if (
+				$this->satisfiesVariantRules($fragment, 'only')
+				&&
+				$this->satisfiesVariantRules($fragment, 'except')
+			) {
+				$this->mergeInYamlFragment($this->yamlConfig, $fragment['fragment']);
+			}
 		}
 
 		if ($cache) {
@@ -491,9 +508,20 @@ class SS_ConfigManifest {
 
 	/**
  	 * Returns false if the non-prefilterable parts of the rule aren't met, and true if they are
+	 *
+	 * @param $fragment array - the fragment to check.
+	 * @param $type - 'only' or 'except'.
+	 * @return bool - True if the rules are met, false if not.
  	 */
-	public function matchesVariantRules($rules) {
-		foreach ($rules as $k => $v) {
+	public function satisfiesVariantRules($fragment, $type) {
+		if (!in_array($type, array('only', 'except'))) user_error("Rule type $type not supported.");
+
+		if (!isset($fragment[$type])) {
+			// No rules of this type found. Default to "all rules satisfied".
+			return true;
+		}
+
+		foreach ($fragment[$type] as $k => $v) {
 			switch (strtolower($k)) {
 				case 'classexists':
 				case 'moduleexists':
@@ -501,17 +529,21 @@ class SS_ConfigManifest {
 					break;
 
 				case 'envvarset':
-					if (isset($_ENV[$k])) break;
-					return false;
+					if ($type=='only' && !isset($_ENV[$k])) return false;
+					if ($type=='except' && isset($_ENV[$k])) return false;
+					break;
 
 				case 'constantdefined':
-					if (defined($k)) break;
-					return false;
+					if ($type=='only' && !defined($k)) return false;
+					if ($type=='except' && defined($k)) return false;
+					break;
 
 				default:
-					if (isset($_ENV[$k]) && $_ENV[$k] == $v) break;
-					if (defined($k) && constant($k) == $v) break;
-					return false;
+					if ($type=='only' && !(isset($_ENV[$k]) && $_ENV[$k] == $v)) return false;
+					if ($type=='except' && isset($_ENV[$k]) && $_ENV[$k] == $v) return false;
+					if ($type=='only' && !(defined($k) && constant($k) == $v)) return false;
+					if ($type=='except' && defined($k) && constant($k) == $v) return false;
+					break;
 			}
 		}
 
