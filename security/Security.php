@@ -280,9 +280,6 @@ class Security extends Controller {
 		$this->response->addHeader('X-Frame-Options', 'SAMEORIGIN');
 	}
 
-	public function index() {
-		return $this->httpError(404); // no-op
-	}
 
 	/**
 	 * Get the login form to process according to the submitted data
@@ -658,8 +655,9 @@ class Security extends Controller {
 				'Form' => $this->ChangePasswordForm()));
 
 		} else {
-			// Show friendly message if it seems like the user arrived here via password reset feature.
-			if(isset($_REQUEST['m']) || isset($_REQUEST['t'])) {
+			// show an error message if the auto login token is invalid and the
+			// user is not logged in
+			if(!isset($_REQUEST['t']) || !$member) {
 				$customisedController = $controller->customise(
 					array('Content' =>
 						_t(
@@ -691,7 +689,7 @@ class Security extends Controller {
 	 * @return Form Returns the lost password form
 	 */
 	public function ChangePasswordForm() {
-		return Object::create('ChangePasswordForm', $this, 'ChangePasswordForm');
+        return Object::create('ChangePasswordForm', $this, 'ChangePasswordForm');
 	}
 
 	/**
@@ -708,13 +706,6 @@ class Security extends Controller {
 	 * @return Member 
 	 */
 	public static function findAnAdministrator() {
-		// coupling to subsites module
-		$origSubsite = null;
-		if(is_callable('Subsite::changeSubsite')) {
-			$origSubsite = Subsite::currentSubsiteID();
-			Subsite::changeSubsite(0);
-		}
-
 		$member = null;
 
 		// find a group with ADMIN permission
@@ -723,10 +714,6 @@ class Security extends Controller {
 			->sort("\"Group\".\"ID\"")
 			->innerJoin("Permission", "\"Group\".\"ID\"=\"Permission\".\"GroupID\"")
 			->First();
-		
-		if(is_callable('Subsite::changeSubsite')) {
-			Subsite::changeSubsite($origSubsite);
-		}
 		
 		if ($adminGroup) {
 			$member = $adminGroup->Members()->First();
