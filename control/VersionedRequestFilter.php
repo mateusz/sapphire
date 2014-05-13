@@ -7,13 +7,13 @@
  */
 class VersionedRequestFilter implements RequestFilter {
 
-	public function preRequest(SS_HTTPRequest $request, Session $session, DataModel $model) {
+	public function preRequest(SS_HTTPRequest $request, SS_HTTPResponse $response, Session $session, DataModel $model) {
 		Versioned::choose_site_stage($session);
-		return true;
+		return $response;
 	}
 
 	public function postRequest(SS_HTTPRequest $request, SS_HTTPResponse $response, DataModel $model) {
-		return true;
+		return $response;
 	}
 
 }

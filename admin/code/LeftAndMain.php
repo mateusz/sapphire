@@ -436,9 +436,9 @@ class LeftAndMain extends Controller implements PermissionProvider {
 		Config::inst()->update('SSViewer', 'theme_enabled', false);
 	}
 	
-	public function handleRequest(SS_HTTPRequest $request, DataModel $model = null) {
+	public function handleRequest(SS_HTTPRequest $request, SS_HTTPResponse $response, DataModel $model = null) {
 		try {
-			$response = parent::handleRequest($request, $model);
+			$response = parent::handleRequest($request, $response, $model);
 		} catch(ValidationException $e) {
 			// Nicer presentation of model-level validation errors
 			$msgs = _t('LeftAndMain.ValidationError', 'Validation error') . ': ' 

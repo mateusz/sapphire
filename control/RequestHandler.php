@@ -147,7 +147,7 @@ class RequestHandler extends ViewableData {
 	 * @uses SS_HTTPRequest->match()
 	 * @return SS_HTTPResponse|RequestHandler|string|array
 	 */
-	public function handleRequest(SS_HTTPRequest $request, DataModel $model) {
+	public function handleRequest(SS_HTTPRequest $request, SS_HTTPResponse $response, DataModel $model) {
 		// $handlerClass is used to step up the class hierarchy to implement url_handlers inheritance
 		$handlerClass = ($this->class) ? $this->class : get_class($this);
 	

@@ -28,21 +28,41 @@ class RequestProcessor implements RequestFilter {
 		$this->filters = $filters;
 	}
 
-	public function preRequest(SS_HTTPRequest $request, Session $session, DataModel $model) {
+	/**
+	 * Add a filter with the highest priority.
+	 *
+	 * @param RequestFilter $filter
+	 */
+	public function unshiftFilter($filter) {
+		$this->filters[] = $filter;
+	}
+
+	/**
+	 * Add a filter with the lowest priority.
+	 *
+	 * @param RequestFilter $filter
+	 */
+	public function pushFilter($filter) {
+		$this->filters[] = $filter;
+	}
+
+	public function preRequest(SS_HTTPRequest $request, SS_HTTPResponse $response, Session $session, DataModel $model) {
 		foreach ($this->filters as $filter) {
-			$res = $filter->preRequest($request, $session, $model);
-			if ($res === false) {
-				return false;
-			}
+			$response = $filter->preRequest($request, $response, $session, $model);
+
+			// Should we skip further filtering?
+			if ($response->shouldTerminate('immediately')) return $response;
 		}
+		return $response;
 	}
 
 	public function postRequest(SS_HTTPRequest $request, SS_HTTPResponse $response, DataModel $model) {
 		foreach ($this->filters as $filter) {
-			$res = $filter->postRequest($request, $response, $model);
-			if ($res === false) {
-				return false;
-			}
+			$response = $filter->postRequest($request, $response, $model);
+
+			// Should we skip further filtering?
+			if ($response->shouldTerminate('immediately')) return $response;
 		}
+		return $response;
 	}
 }
