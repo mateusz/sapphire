@@ -141,21 +141,24 @@ class Director implements TemplateGlobalProvider {
 		}
 		// Initiate an empty session - doesn't initialize an actual PHP session until saved (see belwo)
 		$session = new Session(isset($_SESSION) ? $_SESSION : null);
+		// Create a response object which we will pass along the entire execution chain.
+		// Client code can control how far this request will go by using $response::setTerminationBarrier.
+		$response = new SS_HTTPResponse();
 
-		$output = Injector::inst()->get('RequestProcessor')->preRequest($req, $session, $model);
-		
-		if ($output === false) {
-			// @TODO Need to NOT proceed with the request in an elegant manner
-			throw new SS_HTTPResponse_Exception(_t('Director.INVALID_REQUEST', 'Invalid request'), 400);
+		$response = Injector::inst()->get('RequestProcessor')->preRequest($req, $response, $session, $model);
+
+		if (!$response->shouldTerminate('beforeHandleRequest')) {
+			$result = Director::handleRequest($req, $response, $session, $model);
+			if (!$result instanceof SS_HTTPResponse) {
+				$response->setBody($result);
+			}
 		}
-
-		$result = Director::handleRequest($req, $session, $model);
 
 		// Save session data (and start/resume it if required)
 		$session->inst_save();
 
 		// Return code for a redirection request
-		if(is_string($result) && substr($result,0,9) == 'redirect:') {
+		if(isset($result) && is_string($result) && substr($result,0,9) == 'redirect:') {
 			$url = substr($result, 9);
 
 			if(Director::is_cli()) {
@@ -165,34 +168,22 @@ class Director implements TemplateGlobalProvider {
 					DataModel::inst()
 				);
 			} else {
-				$response = new SS_HTTPResponse();
 				$response->redirect($url);
-				$res = Injector::inst()->get('RequestProcessor')->postRequest($req, $response, $model);
 
-				if ($res !== false) {
-					$response->output();
+				if ($response->shouldTerminate('beforePostRequest')) {
+					$response = Injector::inst()->get('RequestProcessor')->postRequest($req, $response, $model);
 				}
+
+				$response->output();
 			}
 		// Handle a controller
-		} else if($result) {
-			if($result instanceof SS_HTTPResponse) {
-				$response = $result;
-				
-			} else {
-				$response = new SS_HTTPResponse();
-				$response->setBody($result);
-			}
-			
-			$res = Injector::inst()->get('RequestProcessor')->postRequest($req, $response, $model);
-			if ($res !== false) {
-					$response->output();
-			} else {
-				// @TODO Proper response here.
-				throw new SS_HTTPResponse_Exception("Invalid response");
-			}
-			
+		} else {
 
-			//$controllerObj->getSession()->inst_save();
+			if ($response->shouldTerminate('beforePostRequest')) {
+				$res = Injector::inst()->get('RequestProcessor')->postRequest($req, $response, $model);
+			}
+
+			$response->output();
 		}
 	}
 	
@@ -288,7 +279,7 @@ class Director implements TemplateGlobalProvider {
 		}
 		
 		// TODO: Pass in the DataModel
-		$result = Director::handleRequest($request, $session, $model);
+		$result = Director::handleRequest($request, $response, $session, $model);
 		
 		// Ensure that the result is an SS_HTTPResponse object
 		if(is_string($result)) {
@@ -330,7 +321,9 @@ class Director implements TemplateGlobalProvider {
 	 *
 	 * @return SS_HTTPResponse|string
 	 */
-	protected static function handleRequest(SS_HTTPRequest $request, Session $session, DataModel $model) {
+	protected static function handleRequest(SS_HTTPRequest $request, SS_HTTPResponse $response, Session $session,
+		DataModel $model) {
+
 		$rules = Config::inst()->get('Director', 'rules');
 
 		if(isset($_REQUEST['debug'])) Debug::show($rules);
@@ -367,7 +360,7 @@ class Director implements TemplateGlobalProvider {
 					$controllerObj->setSession($session);
 
 					try {
-						$result = $controllerObj->handleRequest($request, $model);
+						$result = $controllerObj->handleRequest($request, $response, $model);
 					} catch(SS_HTTPResponse_Exception $responseException) {
 						$result = $responseException->getResponse();
 					}

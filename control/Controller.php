@@ -113,13 +113,13 @@ class Controller extends RequestHandler implements TemplateGlobalProvider {
 	 * @return SS_HTTPResponse The response that this controller produces, 
 	 *  including HTTP headers such as redirection info
 	 */
-	public function handleRequest(SS_HTTPRequest $request, DataModel $model) {
+	public function handleRequest(SS_HTTPRequest $request, SS_HTTPResponse $response, DataModel $model) {
 		if(!$request) user_error("Controller::handleRequest() not passed a request!", E_USER_ERROR);
 		
 		$this->pushCurrent();
 		$this->urlParams = $request->allParams();
 		$this->request = $request;
-		$this->response = new SS_HTTPResponse();
+		$this->response = $response;
 		$this->setDataModel($model);
 		
 		$this->extend('onBeforeInit');
@@ -140,7 +140,7 @@ class Controller extends RequestHandler implements TemplateGlobalProvider {
 			return $this->response;
 		}
 
-		$body = parent::handleRequest($request, $model);
+		$body = parent::handleRequest($request, $response, $model);
 		if($body instanceof SS_HTTPResponse) {
 			if(isset($_REQUEST['debug_request'])) {
 				Debug::message("Request handler returned SS_HTTPResponse object to $this->class controller;"

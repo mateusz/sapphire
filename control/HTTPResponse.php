@@ -6,6 +6,16 @@
  * @subpackage control
  */
 class SS_HTTPResponse {
+
+	/**
+	 * @var array Ordered list of termination barriers.
+	 */
+	private static $termination_barriers = array(
+		'immediately' => 10,
+		'beforeHandleRequest' => 20,
+		'beforePostRequest' => 30,
+		'none' => 100
+	);
 	
 	/**
 	 * @var array
@@ -89,6 +99,11 @@ class SS_HTTPResponse {
 	 * @var string
 	 */
 	protected $body = null;
+
+	/**
+	 * @var string
+	 */
+	protected $terminationBarrier = 'none';
 	
 	/**
 	 * Create a new HTTP response
@@ -101,6 +116,25 @@ class SS_HTTPResponse {
 	public function __construct($body = null, $statusCode = null, $statusDescription = null) {
 		$this->setBody($body);
 		if($statusCode) $this->setStatusCode($statusCode, $statusDescription);
+	}
+
+	/**
+	 * Add ability to configure the termination barrier for this request. These barriers are
+	 * checked during the control execution. Terminating on the early barrier will fail all the
+	 * subsequent barrier checks, but for technical reasons might not bail out the execution
+	 * immediately. In this respect this is different to throwing and Exception.
+	 */
+	public function updateTerminationBarrier($barrier) {
+		$barrierDefinitions = self::$termination_barriers;
+
+		if (isset($barrierDefinitions[$barrier])) {
+			// Only update the termination barrier if the requested one is earlier.
+			if ($barrierDefinitions[$barrier]<$barrierDefinitions[$this->terminationBarrier]) {
+				$this->terminationBarrier = $barrier;
+			}
+		} else {
+			throw Exception('Invalid barrier name');
+		}
 	}
 	
 	/**
@@ -283,6 +317,19 @@ class SS_HTTPResponse {
 	 */
 	public function isFinished() {
 		return in_array($this->statusCode, array(301, 302, 401, 403));
+	}
+
+	/**
+	 * Check if the response should terminate on the given checkpoint.
+	 */
+	public function shouldTerminate($checkpoint) {
+		$barrierDefinitions = self::$termination_barriers;
+		if (isset($barrierDefinitions[$checkpoint])) {
+			// Allow execution as long as the requested checkpoint is still before the barrier for this request.
+			return ($barrierDefinitions[$checkpoint]>=$barrierDefinitions[$this->terminationBarrier]);
+		} else {
+			throw Exception('Invalid barrier name');
+		}
 	}
 	
 }

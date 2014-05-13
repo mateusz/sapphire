@@ -16,15 +16,16 @@ interface RequestFilter {
 	 * Filter executed before a request processes
 	 * 
 	 * @param SS_HTTPRequest $request Request container object
+	 * @param SS_HTTPResponse $response Response output object
 	 * @param Session $session Request session
 	 * @param DataModel $model Current DataModel
 	 * @return boolean Whether to continue processing other filters. Null or true will continue processing (optional)
 	 */
-	public function preRequest(SS_HTTPRequest $request, Session $session, DataModel $model);
+	public function preRequest(SS_HTTPRequest $request, SS_HTTPResponse $response, Session $session, DataModel $model);
 
 	/**
 	 * Filter executed AFTER a request
-	 * 
+	 *
 	 * @param SS_HTTPRequest $request Request container object
 	 * @param SS_HTTPResponse $response Response output object
 	 * @param DataModel $model Current DataModel
