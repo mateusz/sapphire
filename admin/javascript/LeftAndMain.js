@@ -61,7 +61,7 @@ jQuery.noConflict();
 		};
 
 		/**
-		 * Compare URLs, but normalize trailing slashes in 
+		 * Compare URLs, but normalize trailing slashes in
 		 * URL to work around routing weirdnesses in SS_HTTPRequest.
 		 * Also normalizes relative URLs by prefixing them with the <base>.
 		 */
@@ -71,7 +71,7 @@ jQuery.noConflict();
 			url2 = $.path.isAbsoluteUrl(url2) ? url2 : $.path.makeUrlAbsolute(url2, baseUrl);
 			var url1parts = $.path.parseUrl(url1), url2parts = $.path.parseUrl(url2);
 			return (
-				url1parts.pathname.replace(/\/*$/, '') == url2parts.pathname.replace(/\/*$/, '') && 
+				url1parts.pathname.replace(/\/*$/, '') == url2parts.pathname.replace(/\/*$/, '') &&
 				url1parts.search == url2parts.search
 			);
 		};
@@ -82,13 +82,20 @@ jQuery.noConflict();
 		$(document).ajaxComplete(function(e, xhr, settings) {
 			// Simulates a redirect on an ajax response.
 			if(window.History.enabled) {
-				var url = xhr.getResponseHeader('X-ControllerURL'), 
+				var url = xhr.getResponseHeader('X-ControllerURL');
 					// TODO Replaces trailing slashes added by History after locale (e.g. admin/?locale=en/)
-					origUrl = History.getPageUrl().replace(/\/$/, ''),
-					opts, requestHeaders = settings.headers;
+				var origUrl = History.getPageUrl().replace(/\/$/, '');
+				var opts;
 
 				if(url !== null && !isSameUrl(origUrl, url)) {
-					opts = {pjax: xhr.getResponseHeader('X-Pjax') ? xhr.getResponseHeader('X-Pjax') : settings.headers['X-Pjax']};
+					// Copy over the pjax header to the redirected request.
+					opts = {};
+					if (pjaxHeader = xhr.getResponseHeader('X-Pjax')) {
+						opts = {pjax: pjaxHeader};
+					} else if (settings.headers && (pjaxHeader = settings.headers['X-Pjax'])) {
+						opts = {pjax: pjaxHeader};
+					}
+
 					window.History.pushState(opts, '', url);
 				}
 			}
